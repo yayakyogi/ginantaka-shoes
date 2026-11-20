@@ -18,7 +18,7 @@ This file defines **the order** in which the MVP is built. What to build is defi
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Scaffold | Done |
-| 1 | API foundation + auth | Done, awaiting review (`task test` green: 62 API tests) |
+| 1 | API foundation + auth | Done |
 | 2 | API owner catalog | Not started |
 | 3 | API public catalog + cart | Not started |
 | 4 | Dashboard | Not started |
