@@ -1,0 +1,31 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Env files (only .env.example is committed)
+.env
+.env.*
+!.env.example
+
+# JS
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Dashboard
+apps/dashboard/.svelte-kit/
+apps/dashboard/build/
+
+# Mobile
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/web-build/
+apps/mobile/ios/
+apps/mobile/android/
+*.tsbuildinfo

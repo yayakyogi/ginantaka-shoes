@@ -1,0 +1,9 @@
+{
+  "name": "ginantaka-shoes",
+  "private": true,
+  "workspaces": [
+    "apps/dashboard",
+    "apps/mobile",
+    "packages/*"
+  ]
+}

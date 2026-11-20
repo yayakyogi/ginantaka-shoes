@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ginantaka
+          POSTGRES_PASSWORD: ginantaka
+          POSTGRES_DB: ginantaka_shoes
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ginantaka -d ginantaka_shoes"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: arduino/setup-task@v2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: astral-sh/setup-uv@v6
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Same as scripts/db-init.sql, which only runs inside docker compose.
+      - name: Create test database
+        env:
+          PGPASSWORD: ginantaka
+        run: psql -h localhost -U ginantaka -d ginantaka_shoes -c "CREATE DATABASE ginantaka_shoes_test OWNER ginantaka;"
+
+      - run: task setup
+      - run: task api:lint
+      - run: task test
+
+      - name: Generated API client is up to date
+        run: |
+          task api:openapi
+          git diff --exit-code -- packages/api-client

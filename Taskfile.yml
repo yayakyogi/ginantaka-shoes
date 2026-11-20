@@ -1,0 +1,139 @@
+version: '3'
+
+# The only command surface for humans, CI, and agents (ADR 0001).
+
+vars:
+  API_DIR: apps/api
+  DASHBOARD_DIR: apps/dashboard
+  MOBILE_DIR: apps/mobile
+  API_CLIENT_DIR: packages/api-client
+
+tasks:
+  setup:
+    desc: Install all dependencies and create .env files from .env.example (never overwrites)
+    cmds:
+      - for: [apps/api, apps/dashboard, apps/mobile]
+        cmd: '[ -f {{.ITEM}}/.env ] || cp {{.ITEM}}/.env.example {{.ITEM}}/.env'
+      - task: api:setup
+      - bun install
+
+  doctor:
+    desc: Check that required tools are installed and Docker is running
+    cmds:
+      - ./scripts/doctor.sh
+
+  test:
+    desc: Run every test suite (API, dashboard, mobile)
+    cmds:
+      - task: api:test
+      - task: dashboard:test
+      - task: mobile:test
+
+  db:up:
+    desc: Start local PostgreSQL 16 (databases ginantaka_shoes and ginantaka_shoes_test)
+    cmds:
+      - docker compose up -d --wait db
+
+  db:down:
+    desc: Stop local PostgreSQL (data volume is kept)
+    cmds:
+      - docker compose down
+
+  api:setup:
+    desc: Install API dependencies with uv
+    dir: '{{.API_DIR}}'
+    cmds:
+      - uv sync
+
+  api:dev:
+    desc: Run the API with auto-reload on http://localhost:8000 (pass `-- --host 0.0.0.0` for phones)
+    dir: '{{.API_DIR}}'
+    cmds:
+      - uv run uvicorn app.main:app --reload {{.CLI_ARGS}}
+
+  api:test:
+    desc: Run API tests against TEST_DATABASE_URL
+    dir: '{{.API_DIR}}'
+    cmds:
+      - uv run pytest {{.CLI_ARGS}}
+
+  api:lint:
+    desc: Lint and format-check the API with ruff
+    dir: '{{.API_DIR}}'
+    cmds:
+      - uv run ruff check .
+      - uv run ruff format --check .
+
+  api:migrate:
+    desc: Apply Alembic migrations to DATABASE_URL
+    dir: '{{.API_DIR}}'
+    cmds:
+      - uv run alembic upgrade head
+
+  api:migration:
+    desc: 'Autogenerate a migration, e.g. task api:migration -- "add users"'
+    dir: '{{.API_DIR}}'
+    requires:
+      vars: [CLI_ARGS]
+    cmds:
+      - uv run alembic revision --autogenerate -m "{{.CLI_ARGS}}"
+
+  api:seed-owner:
+    desc: Create the owner account from OWNER_* env vars (CMD-1)
+    dir: '{{.API_DIR}}'
+    cmds:
+      - uv run python -m app.scripts.seed_owner
+
+  api:seed-demo:
+    desc: Insert demo catalog data, idempotent, dev only (CMD-2)
+    dir: '{{.API_DIR}}'
+    cmds:
+      - uv run python -m app.scripts.seed_demo
+
+  api:openapi:
+    desc: Export the OpenAPI schema and regenerate the TypeScript client types (ADR 0005)
+    cmds:
+      - cd {{.API_DIR}} && uv run python -m app.scripts.export_openapi ../../{{.API_CLIENT_DIR}}/openapi.json
+      - cd {{.API_CLIENT_DIR}} && bun run generate
+
+  dashboard:dev:
+    desc: Run the dashboard dev server on http://localhost:5173
+    dir: '{{.DASHBOARD_DIR}}'
+    cmds:
+      - bun run dev
+
+  dashboard:test:
+    desc: Run dashboard tests (Vitest)
+    dir: '{{.DASHBOARD_DIR}}'
+    cmds:
+      - bun run test
+
+  dashboard:check:
+    desc: Type-check the dashboard (svelte-check)
+    dir: '{{.DASHBOARD_DIR}}'
+    cmds:
+      - bun run check
+
+  dashboard:build:
+    desc: Build the dashboard as a static SPA into apps/dashboard/build
+    dir: '{{.DASHBOARD_DIR}}'
+    cmds:
+      - bun run build
+
+  mobile:dev:
+    desc: Start the Expo dev server (open in Expo Go)
+    dir: '{{.MOBILE_DIR}}'
+    cmds:
+      - bunx expo start {{.CLI_ARGS}}
+
+  mobile:test:
+    desc: Run mobile tests (Jest + jest-expo)
+    dir: '{{.MOBILE_DIR}}'
+    cmds:
+      - bun run test
+
+  mobile:check:
+    desc: Type-check the mobile app (tsc --noEmit)
+    dir: '{{.MOBILE_DIR}}'
+    cmds:
+      - bun run check

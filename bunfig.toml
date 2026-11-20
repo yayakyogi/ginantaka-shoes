@@ -1,0 +1,3 @@
+[install]
+# Explicit so Bun upgrades do not change install behavior silently (ADR 0001).
+linker = "isolated"
